@@ -19,11 +19,17 @@
   <body class="d-flex flex-column h-100 text-white bg-dark">
     <div class="container-fluid">
       <div class="row" id="buttondiv">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <input type="file" class="form-control" id="inputfile" />          
         </div>       
         <div class="col-md-1", id="levels">
           <input type="number" class="form-control" id="inputlevels" value="1" min="1" max="20" step="1"/>
+        </div>
+        <div class="col-md-3">
+          <select class="form-control" id="ditherAlgorithm">
+            <option value="floyd-steinberg">Floyd-Steinberg</option>
+            <option value="jarvis-judice">Jarvis-Judice-Ninke</option>
+          </select>
         </div> 
       </div>
       <div class="row">

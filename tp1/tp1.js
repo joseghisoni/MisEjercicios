@@ -6,7 +6,7 @@ function handleFiles(e)
     var URL      = window.webkitURL || window.URL;
     // canvas de entrada, de dithering y de diferencias
     var canvasinput  = document.getElementById('canvasinput');
-    var contextinput  = canvasinput.getContext('2d');
+    var contextinput  = canvasinput.getContext('2d', { willReadFrequently: true });
     var url      = URL.createObjectURL(e.target.files[0]);
     var img      = new Image();
 
@@ -37,12 +37,15 @@ function recomputeImages()
     var canvasinput   = document.getElementById('canvasinput');
     var canvasresult  = document.getElementById('canvasresult');
     var canvasdiff    = document.getElementById('canvasdiff');
-    var contextinput  = canvasinput.getContext('2d');
-    var contextresult = canvasresult.getContext('2d');
-    var contextdiff   = canvasdiff.getContext('2d'); 
+    var contextinput  = canvasinput.getContext('2d', { willReadFrequently: true });
+    var contextresult = canvasresult.getContext('2d', { willReadFrequently: true });
+    var contextdiff   = canvasdiff.getContext('2d', { willReadFrequently: true });
 
     // obtener niveles 
     var levels = document.getElementById('inputlevels').value;   
+    
+    // obtener algoritmo de dithering
+    var algorithm = document.getElementById('ditherAlgorithm').value;   
 
     // limpiamos el canvas
     contextresult.clearRect(0, 0, canvasresult.width, canvasresult.height);
@@ -55,7 +58,7 @@ function recomputeImages()
                                             canvasinput.height );
     
     // filtrado
-    dither(ditherimg,levels)
+    dither(ditherimg,levels,algorithm)
 
     // mostramos el resultado despuás del filtrado
     canvasresult.width  = canvasinput.width;
@@ -92,6 +95,10 @@ window.onload = function()
     // asocio inputlevels a la función recomputeImages()
     var inputlevels   = document.getElementById('inputlevels');
     inputlevels.addEventListener('change', recomputeImages);
+    
+    // asocio ditherAlgorithm a la función recomputeImages()
+    var ditherAlgorithm = document.getElementById('ditherAlgorithm');
+    ditherAlgorithm.addEventListener('change', recomputeImages);
 
     console.log("> HTML listo!");
 };
