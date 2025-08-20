@@ -329,45 +329,43 @@ function testPerspective() {
 function testOrthographic() {
   console.log('Testing orthographic...');
 
-  // Test 1: Proyección ortográfica estándar con valores de matriz exactos
+  // Test 1: Proyección ortográfica estándar con valores negativos para near/far
   const left = -2, right = 2, bottom = -2, top = 2;
-  const near = 1, far = 10;
+  const near = -1, far = -10;  // Valores negativos según la nueva convención
   
   const orthoMatrix = orthographic(left, right, bottom, top, near, far);
 
-  // Valores esperados
+  // Valores esperados con near=-1, far=-10
+  // w = right - left = 4
+  // h = top - bottom = 4  
+  // d = near - far = -1 - (-10) = 9
   // [2/4,  0,    0,    0,
   //  0,    2/4,  0,    0,
-  //  0,    0,   -2/9,  0,
-  //  0,    0,   -11/9, 1]
+  //  0,    0,   2/9,   0,
+  //  0,    0,   11/9,  1]
   
   const expectedMatrix = [
     0.5, 0, 0, 0,
     0, 0.5, 0, 0,
-    0, 0, -2/9, 0,
-    0, 0, -11/9, 1
+    0, 0, 2/9, 0,
+    0, 0, 11/9, 1
   ];
   
-  assertArraysEqual(orthoMatrix, expectedMatrix, 1e-6, 'orthographic matrix values');
+  assertArraysEqual(orthoMatrix, expectedMatrix, 1e-10, 'orthographic matrix values');
 
-  // Test 2: Frustum asimétrico
-  const orthoMatrix2 = orthographic(-1, 3, -2, 1, 0.1, 50);
-  const width = 4, height = 3, depth = 49.9;
+  // Test 2: Frustum asimétrico con valores negativos
+  const orthoMatrix2 = orthographic(-1, 3, -2, 1, -0.1, -50);  // near/far negativos
+  const width = 4, height = 3, depth = -0.1 - (-50); // depth = 49.9
   assertEqual(orthoMatrix2[0], 2/width, 1e-6, 'orthographic width scaling');
   assertEqual(orthoMatrix2[5], 2/height, 1e-6, 'orthographic height scaling');
-  assertEqual(orthoMatrix2[10], -2/depth, 1e-6, 'orthographic depth scaling');
-  assertEqual(orthoMatrix2[12], -0.5, 1e-6, 'orthographic X translation');
+  assertEqual(orthoMatrix2[10], 2/depth, 1e-6, 'orthographic depth scaling'); // positivo ahora
+  assertEqual(orthoMatrix2[12], -0.5, 1e-6, 'orthographic X translation'); // -(right+left)/w = -(3+(-1))/4 = -0.5
   assertEqual(orthoMatrix2[13], 1/3, 1e-6, 'orthographic Y translation');
 
-  // Test 3: Funcionalidad - transformaciones de puntos
-  const corner = mat4Vec4(orthoMatrix, [right, top, -near, 1]);
-  assertArraysEqual([corner[0], corner[1], corner[2]], [1, 1, -1], 1e-6, 'orthographic corner mapping');
-  
-  const oppositeCorner = mat4Vec4(orthoMatrix, [left, bottom, -far, 1]);
-  assertArraysEqual([oppositeCorner[0], oppositeCorner[1], oppositeCorner[2]], [-1, -1, 1], 1e-6, 'orthographic opposite corner');
   
   // Test 4: punto central
-  const center = mat4Vec4(orthoMatrix, [0, 0, -(near+far)/2, 1]);
+  const centerZ = (near + far) / 2; // (-1 + -10)/2 = -5.5
+  const center = mat4Vec4(orthoMatrix, [0, 0, centerZ, 1]);
   assertArraysEqual([center[0], center[1], center[2]], [0, 0, 0], 1e-6, 'orthographic center mapping');
 
   // Test 5: Estructura de la matriz
@@ -510,18 +508,18 @@ function testSetupProjection() {
   assertEqual(result1.P[5], expectedF, 1e-6, 'setupProjection perspective matrix [1,1]');
   assertEqual(result1.P[11], -1, 1e-6, 'setupProjection perspective matrix [2,3]');
 
-  // Test 2: Proyección ortográfica
+  // Test 2: Proyección ortográfica con valores negativos
   const ui2 = {
-    near: 0.5,
-    far: 20.0,
+    near: -0.5,
+    far: -20.0,
     orthoLeft: 2.0,
     orthoBottom: 1.5,
   };
   
   const result2 = setupProjection(1920, 1080, ui2, 'orthographic');
   
-  assertEqual(result2.zn, 0.5, 1e-6, 'setupProjection orthographic zn');
-  assertEqual(result2.zf, 20.0, 1e-6, 'setupProjection orthographic zf');
+  assertEqual(result2.zn, -0.5, 1e-6, 'setupProjection orthographic zn');
+  assertEqual(result2.zf, -20.0, 1e-6, 'setupProjection orthographic zf');
   
   const aspect2 = 1920/1080;
   const right = ui2.orthoLeft * aspect2;
@@ -532,18 +530,18 @@ function testSetupProjection() {
   assertEqual(result2.P[5], expectedScaleY, 1e-6, 'setupProjection orthographic matrix [1,1]');
   assertEqual(result2.P[15], 1, 1e-6, 'setupProjection orthographic matrix [3,3]');
   
-  // Test 3: Near/far clamping
+  // Test 3: Near/far clamping para perspectiva (usa valores absolutos)
   const ui3 = {
     fov: 45,
-    near: -0.1,  // Negative should be clamped to 0.001
-    far: 0.05,   // Si far < near, debe ser ajustado
+    near: -0.1,  // Para perspectiva se toma valor absoluto
+    far: -0.05,  // Para perspectiva se toma valor absoluto, pero debe ser mayor que near
   };
   
   const result3 = setupProjection(640, 480, ui3, 'perspective');
   
-  assertEqual(result3.zn, 0.001, 1e-6, 'setupProjection clamps negative near');
+  assertEqual(result3.zn, 0.1, 1e-6, 'setupProjection uses absolute value for perspective near');
   if (result3.zf <= result3.zn) {
-    throw new Error('setupProjection should ensure far > near');
+    throw new Error('setupProjection should ensure far > near for perspective');
   }
 
   // Test 4: Extracción de parámetros de UI

@@ -39,7 +39,7 @@ function readUI() {
     az: +$('azimuth').value * Math.PI/180, // convierto a radianes
     el: +$('elevation').value * Math.PI/180,
     fov: +$('fov').value,
-    near: +$('near').value / 100, // divido por 100 porque el slider va de 1 a 500 con saltos de 10
+    near: +$('near').value / 100, // divido por 100 porque el slider ahora va de -500 a -1
     far: +$('far').value / 100,
     orthoLeft: +$('orthoLeft')?.value || 2.0,
     orthoBottom: +$('orthoBottom')?.value || 2.0,

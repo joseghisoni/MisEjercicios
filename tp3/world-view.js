@@ -56,10 +56,14 @@ function getFrustumCorners(eye, center, up, fov, aspect, near, far) {
   
   const corners = [];
   
+  // Para perspectiva, near y far son positivos (distancia desde el ojo)
+  const nearDist = Math.abs(near);
+  const farDist = Math.abs(far);
+  
   // Near plane corners
-  const nearCenter = Vec.add(eye, Vec.scale(viewDir, near));
-  const nearH = halfHeight * near;
-  const nearW = halfWidth * near;
+  const nearCenter = Vec.add(eye, Vec.scale(viewDir, nearDist));
+  const nearH = halfHeight * nearDist;
+  const nearW = halfWidth * nearDist;
   
   corners.push(
     Vec.add(Vec.add(nearCenter, Vec.scale(right, -nearW)), Vec.scale(realUp, -nearH)), // bottom-left
@@ -69,9 +73,9 @@ function getFrustumCorners(eye, center, up, fov, aspect, near, far) {
   );
   
   // Far plane corners
-  const farCenter = Vec.add(eye, Vec.scale(viewDir, far));
-  const farH = halfHeight * far;
-  const farW = halfWidth * far;
+  const farCenter = Vec.add(eye, Vec.scale(viewDir, farDist));
+  const farH = halfHeight * farDist;
+  const farW = halfWidth * farDist;
   
   corners.push(
     Vec.add(Vec.add(farCenter, Vec.scale(right, -farW)), Vec.scale(realUp, -farH)), // bottom-left
@@ -96,8 +100,12 @@ function getOrthographicFrustumCorners(eye, center, up, left, bottom, aspect, ne
   
   const corners = [];
   
+  // Para ortográfica, near y far son negativos, los convertimos a distancias positivas
+  const nearDist = Math.abs(near);
+  const farDist = Math.abs(far);
+  
   // Near plane corners
-  const nearCenter = Vec.add(eye, Vec.scale(viewDir, near));
+  const nearCenter = Vec.add(eye, Vec.scale(viewDir, nearDist));
   corners.push(
     Vec.add(Vec.add(nearCenter, Vec.scale(right, -halfWidth)), Vec.scale(realUp, -halfHeight)), // bottom-left
     Vec.add(Vec.add(nearCenter, Vec.scale(right, halfWidth)), Vec.scale(realUp, -halfHeight)),  // bottom-right
@@ -106,7 +114,7 @@ function getOrthographicFrustumCorners(eye, center, up, left, bottom, aspect, ne
   );
   
   // Far plane corners (same size as near plane for orthographic)
-  const farCenter = Vec.add(eye, Vec.scale(viewDir, far));
+  const farCenter = Vec.add(eye, Vec.scale(viewDir, farDist));
   corners.push(
     Vec.add(Vec.add(farCenter, Vec.scale(right, -halfWidth)), Vec.scale(realUp, -halfHeight)), // bottom-left
     Vec.add(Vec.add(farCenter, Vec.scale(right, halfWidth)), Vec.scale(realUp, -halfHeight)),  // bottom-right
