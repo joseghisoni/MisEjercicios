@@ -241,27 +241,36 @@ function drawTriangle(img, depth, v0, v1, v2, rgb){
     }
   }
 }
-// TODO: Completar la función de renderizado de triángulos
+
+// Esta función renderiza el triángulo
 function renderTriangles(width, height, clip) {
   const imgData = ctx.createImageData(width, height);
-  const depth = new Float32Array(width * height);
-  depth.fill(Number.POSITIVE_INFINITY);
+  const depth   = new Float32Array(width * height);
+  depth.fill(Number.NEGATIVE_INFINITY);
   const img = {data: imgData.data, w: width, h: height};
   
   for(let i = 0; i < CUBE_FACES.length; i++) {
     // Elijo un triángulo
     const [i0, i1, i2] = CUBE_FACES[i];
     // Convierto a coordenadas CLIP y descarto triángulos
-   
+    const c0 = clip[i0], c1 = clip[i1], c2 = clip[i2];
+
+    if (triOutsideZ(c0, c1, c2)) continue;
 
     // Convierto CLIP -> NDC -> screen
-   
-    
+    const v0 = ndcToScreen(homogeneousToNDC(c0), width, height);
+    const v1 = ndcToScreen(homogeneousToNDC(c1), width, height);
+    const v2 = ndcToScreen(homogeneousToNDC(c2), width, height);
+
     // Backface culling
-   
-  }
-  
-  return { imgData, depth };
+    const area = edge(v0, v1, v2);
+    if (area > 0) continue; // ndc flip this
+
+    if (mode === 'fill') {
+      drawTriangle(img, depth, v0, v1, v2, FACE_COLORS[i]);
+    } else if (mode === 'depth') {
+      drawTriangle(img, depth, v0, v1, v2, [0, 0, 0]);
+    }
 }
 
 // TODO: Completar la función de renderizado principal
