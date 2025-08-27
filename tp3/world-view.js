@@ -1,11 +1,14 @@
-
 // Viewport de espacio mundo
 let worldCanvas, worldCtx;
 let worldViewport = { x: 0, y: 0, width: 250, height: 250 };
 
 function initWorldView() {
+  console.log('Initializing world view...');
   const mainCanvas = document.getElementById('cv');
-  if (!mainCanvas) return;
+  if (!mainCanvas) {
+    console.error('Main canvas not found');
+    return;
+  }
   
   worldCanvas = document.createElement('canvas');
   worldCanvas.style.position = 'fixed';
@@ -24,6 +27,8 @@ function initWorldView() {
   worldCtx = worldCanvas.getContext('2d');
   document.body.appendChild(worldCanvas);
   
+  console.log('World view canvas created and added to DOM');
+  
   if (typeof render === 'function') {
     render();
   }
@@ -31,145 +36,114 @@ function initWorldView() {
 
 
 // Proyección 3D en perspectiva para la vista del mundo
-function project3D(worldPos, worldViewMatrix, worldProjMatrix) {
-  const viewPos = mat4Vec4(worldViewMatrix, [worldPos[0], worldPos[1], worldPos[2], 1]);
-  const clipPos = mat4Vec4(worldProjMatrix, viewPos);
-  const w = clipPos[3];
-  if (w <= 0 || Math.abs(w) < 1e-6) return null; // behind or too close to the eye plane
-  const ndc = [clipPos[0]/w, clipPos[1]/w, clipPos[2]/w];
-  const x = (ndc[0] * 0.5 + 0.5) * worldViewport.width;
-  const y = (1 - (ndc[1] * 0.5 + 0.5)) * worldViewport.height;
-  return [x, y, ndc[2]];
-}
-
-
-// Genera puntos de esquina del frustum en el espacio mundo
-function getFrustumCorners(eye, center, up, fov, aspect, near, far) {
-  const fovRad = fov * Math.PI / 180;
-  const halfHeight = Math.tan(fovRad / 2);
-  const halfWidth = halfHeight * aspect;
+function drawWorldView(eye, center, up, fov, aspect, zn, zf, azimuth, elevation, projectionType) {
+  if (!worldCtx) {
+    console.error('worldCtx not available');
+    return;
+  }
   
-  // View matrix inverse to transform from view to world
-  const viewDir = Vec.normalize(Vec.sub(center, eye));
-  const right = Vec.normalize(Vec.cross(viewDir, up));
-  const realUp = Vec.cross(right, viewDir);
   
-  const corners = [];
+  const width = worldViewport.width;
+  const height = worldViewport.height;
   
-  // Para perspectiva, near y far son positivos (distancia desde el ojo)
-  const nearDist = Math.abs(near);
-  const farDist = Math.abs(far);
+  // Limpiar canvas
+  worldCtx.fillStyle = '#f8f8f8';
+  worldCtx.fillRect(0, 0, width, height);
   
-  // Near plane corners
-  const nearCenter = Vec.add(eye, Vec.scale(viewDir, nearDist));
-  const nearH = halfHeight * nearDist;
-  const nearW = halfWidth * nearDist;
+  // Configurar cámara para vista de dios (side view)
+  const godEye = [15, 0, 0];
   
-  corners.push(
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, -nearW)), Vec.scale(realUp, -nearH)), // bottom-left
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, nearW)), Vec.scale(realUp, -nearH)),  // bottom-right
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, nearW)), Vec.scale(realUp, nearH)),   // top-right
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, -nearW)), Vec.scale(realUp, nearH))  // top-left
-  );
+  const godCenter = [0, 0, 0];
+  const godUp = [0, 1, 0];
   
-  // Far plane corners
-  const farCenter = Vec.add(eye, Vec.scale(viewDir, farDist));
-  const farH = halfHeight * farDist;
-  const farW = halfWidth * farDist;
+  // Matrices para la vista de dios
+  if (typeof lookAt !== 'function' || typeof orthographic !== 'function' || typeof mat4Mul !== 'function') {
+    console.error('Required functions not available:', { lookAt: typeof lookAt, orthographic: typeof orthographic, mat4Mul: typeof mat4Mul });
+    return;
+  }  
+  const godV = lookAt(godEye, godCenter, godUp);
+  // Perspective projection for more natural depth
+  const godP = perspective(60, 1.0, 1, 25); // 60 degree FOV, square aspect ratio
+  const godMVP = mat4Mul(godP, godV);
   
-  corners.push(
-    Vec.add(Vec.add(farCenter, Vec.scale(right, -farW)), Vec.scale(realUp, -farH)), // bottom-left
-    Vec.add(Vec.add(farCenter, Vec.scale(right, farW)), Vec.scale(realUp, -farH)),  // bottom-right
-    Vec.add(Vec.add(farCenter, Vec.scale(right, farW)), Vec.scale(realUp, farH)),   // top-right
-    Vec.add(Vec.add(farCenter, Vec.scale(right, -farW)), Vec.scale(realUp, farH))  // top-left
-  );
+  // Check for additional dependencies
+  if (typeof mat4Vec4 !== 'function' || typeof Vec === 'undefined') {
+    console.error('Additional required objects not available:', { 
+      mat4Vec4: typeof mat4Vec4, 
+      Vec: typeof Vec 
+    });
+    return;
+  }
   
-  return corners;
-}
-
-
-// Genera puntos de esquina del prisma ortográfico en el espacio mundo
-function getOrthographicFrustumCorners(eye, center, up, left, bottom, aspect, near, far) {
-  // View matrix components
-  const viewDir = Vec.normalize(Vec.sub(center, eye));
-  const right = Vec.normalize(Vec.cross(viewDir, up));
-  const realUp = Vec.cross(right, viewDir);
+  // Función auxiliar para transformar puntos 3D a la vista de dios
+  function worldTo2D(point3d) {
+    const clip = mat4Vec4(godMVP, [point3d[0], point3d[1], point3d[2], 1]);
+    const ndc = [clip[0]/clip[3], clip[1]/clip[3], clip[2]/clip[3]];
+    return [
+      (ndc[0] + 1) * width * 0.5,
+      height - (ndc[1] + 1) * height * 0.5
+    ];
+  }
   
-  const halfWidth = left * aspect; // Use left parameter with aspect ratio
-  const halfHeight = bottom;       // Use bottom parameter directly
-  
-  const corners = [];
-  
-  // Para ortográfica, near y far son negativos, los convertimos a distancias positivas
-  const nearDist = Math.abs(near);
-  const farDist = Math.abs(far);
-  
-  // Near plane corners
-  const nearCenter = Vec.add(eye, Vec.scale(viewDir, nearDist));
-  corners.push(
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, -halfWidth)), Vec.scale(realUp, -halfHeight)), // bottom-left
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, halfWidth)), Vec.scale(realUp, -halfHeight)),  // bottom-right
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, halfWidth)), Vec.scale(realUp, halfHeight)),   // top-right
-    Vec.add(Vec.add(nearCenter, Vec.scale(right, -halfWidth)), Vec.scale(realUp, halfHeight))  // top-left
-  );
-  
-  // Far plane corners (same size as near plane for orthographic)
-  const farCenter = Vec.add(eye, Vec.scale(viewDir, farDist));
-  corners.push(
-    Vec.add(Vec.add(farCenter, Vec.scale(right, -halfWidth)), Vec.scale(realUp, -halfHeight)), // bottom-left
-    Vec.add(Vec.add(farCenter, Vec.scale(right, halfWidth)), Vec.scale(realUp, -halfHeight)),  // bottom-right
-    Vec.add(Vec.add(farCenter, Vec.scale(right, halfWidth)), Vec.scale(realUp, halfHeight)),   // top-right
-    Vec.add(Vec.add(farCenter, Vec.scale(right, -halfWidth)), Vec.scale(realUp, halfHeight))  // top-left
-  );
-  
-  return corners;
-}
-
-function drawWorldView(eye, center, up, fov, aspect, near, far, azimuth, elevation, projectionType) {
-  if (!worldCtx) return;
-  
-  worldCtx.clearRect(0, 0, worldViewport.width, worldViewport.height);
-  
-  // World view camera positioned for side view
-  const worldEye = [12, 0.5, 0];  // Side view from positive X axis, much further and lower
-  const worldCenter = [0, 0.5, 0];  // Look slightly up to center the view
-  const worldUp = [0, 1, 0];
-  
-  // Create world view and projection matrices
-  const worldViewMatrix = lookAt(worldEye, worldCenter, worldUp);
-  const worldProjMatrix = perspective(30, 1, 0.1, 40);
-  
-  // Helper function to draw line between two 3D points
-  function drawLine3D(p1, p2, style = '#666', width = 1, dashed = false) {
-    const s1 = project3D(p1, worldViewMatrix, worldProjMatrix);
-    const s2 = project3D(p2, worldViewMatrix, worldProjMatrix);
+  // Helper function to draw 3D lines
+  function drawLine3D(point1, point2, color, lineWidth) {
+    const p1 = worldTo2D(point1);
+    const p2 = worldTo2D(point2);
     
-    if (!s1 || !s2) return; // Behind camera
-    
-    worldCtx.strokeStyle = style;
-    worldCtx.lineWidth = width;
-    worldCtx.setLineDash(dashed ? [5, 5] : []);
+    worldCtx.strokeStyle = color;
+    worldCtx.lineWidth = lineWidth;
     worldCtx.beginPath();
-    worldCtx.moveTo(s1[0], s1[1]);
-    worldCtx.lineTo(s2[0], s2[1]);
+    worldCtx.moveTo(p1[0], p1[1]);
+    worldCtx.lineTo(p2[0], p2[1]);
     worldCtx.stroke();
-    worldCtx.setLineDash([]); // Reset line dash
-  }
-
-
-  // Dibuja la cuadrícula para la vista lateral (planos YZ y XY)
-  worldCtx.strokeStyle = '#ddd';
-  worldCtx.lineWidth = 1;
-  for (let i = -3; i <= 3; i++) {
-    // YZ plane grid (vertical lines)
-    drawLine3D([0, i, -3], [0, i, 3], '#eee', 1);
-    drawLine3D([0, -3, i], [0, 3, i], '#eee', 1);
-    // XZ plane grid (ground plane)
-    drawLine3D([i, 0, -3], [i, 0, 3], '#ddd', 1);
-    drawLine3D([-3, 0, i], [3, 0, i], '#ddd', 1);
   }
   
-    // Draw world cube (fixed in space)
+  
+  // Dibujar ground plane grid
+  drawGroundGrid(drawLine3D);
+  
+  // Dibujar cubo
+  drawCube(drawLine3D);
+  
+  // Dibujar cámara principal
+  drawMainCamera(worldTo2D, eye, center, up);
+  
+  // Dibujar frustum de visualización
+  drawViewingFrustum(worldTo2D, eye, center, up, fov, aspect, zn, zf, projectionType);
+  
+}
+
+function drawGrid(drawLine3D, canvasWidth, canvasHeight) {
+  // Extended ground plane for perspective stretching effect
+  // Much larger grid to show perspective foreshortening
+  const size = 20; // Extended range
+  const worldLeft = -size;
+  const worldRight = size;  
+  const worldNear = -size;
+  const worldFar = size;
+  
+  // Grid spacing
+  const gridSpacing = 1;
+  
+  // Light ground grid plane (XZ plane at y=0)
+  // Vertical lines (parallel to Z-axis) - these will show perspective convergence
+  for (let x = worldLeft; x <= worldRight; x += gridSpacing) {
+    drawLine3D([x, 0, worldNear], [x, 0, worldFar], '#ddd', 0.6);
+  }
+  
+  // Horizontal lines (parallel to X-axis) - these will show depth spacing
+  for (let z = worldNear; z <= worldFar; z += gridSpacing) {
+    drawLine3D([worldLeft, 0, z], [worldRight, 0, z], '#ddd', 0.6);
+  }
+}
+
+function drawGroundGrid(drawLine3D) {
+  // Simple ground reference line (Z-axis through origin)
+  drawLine3D([0, 0, -10], [0, 0, 10], '#ccc', 1);
+}
+
+function drawCube(drawLine3D) {
+  // Draw world cube (fixed in space)
   const cubeVerts = [
     [-0.5,-0.5,-0.5],[ 0.5,-0.5,-0.5],[ 0.5, 0.5,-0.5],[-0.5, 0.5,-0.5],
     [-0.5,-0.5, 0.5],[ 0.5,-0.5, 0.5],[ 0.5, 0.5, 0.5],[-0.5, 0.5, 0.5],
@@ -184,84 +158,175 @@ function drawWorldView(eye, center, up, fov, aspect, near, far, azimuth, elevati
   edges.forEach(([i, j]) => {
     drawLine3D(cubeVerts[i], cubeVerts[j], '#333', 2);
   });
-  
-  // Dibuja la cámara como un cono triangular
-  function drawCameraCone(cameraPos, lookDir) {
-    const coneHeight = 0.3;
-    const coneRadius = 0.15;
+}
 
-    // Calcula el vértice superior del cono y el centro de la base
-    const tip = cameraPos;
-    const baseCenter = [
-      cameraPos[0] + lookDir[0] * coneHeight,
-      cameraPos[1] + lookDir[1] * coneHeight,
-      cameraPos[2] + lookDir[2] * coneHeight
-    ];
-    
-    const rightVec = Vec.normalize(Vec.cross(lookDir, up));
-    const upVec = Vec.normalize(Vec.cross(rightVec, lookDir));
-    
-    const baseVerts = [
-      [baseCenter[0] + rightVec[0] * coneRadius,
-       baseCenter[1] + rightVec[1] * coneRadius,
-       baseCenter[2] + rightVec[2] * coneRadius],
-      [baseCenter[0] - rightVec[0] * coneRadius * 0.5 + upVec[0] * coneRadius * 0.866,
-       baseCenter[1] - rightVec[1] * coneRadius * 0.5 + upVec[1] * coneRadius * 0.866,
-       baseCenter[2] - rightVec[2] * coneRadius * 0.5 + upVec[2] * coneRadius * 0.866],
-      [baseCenter[0] - rightVec[0] * coneRadius * 0.5 - upVec[0] * coneRadius * 0.866,
-       baseCenter[1] - rightVec[1] * coneRadius * 0.5 - upVec[1] * coneRadius * 0.866,
-       baseCenter[2] - rightVec[2] * coneRadius * 0.5 - upVec[2] * coneRadius * 0.866]
-    ];
-    
-    drawLine3D(tip, baseVerts[0], '#ff4444', 2);
-    drawLine3D(tip, baseVerts[1], '#ff4444', 2);
-    drawLine3D(tip, baseVerts[2], '#ff4444', 2);
-    drawLine3D(baseVerts[0], baseVerts[1], '#ff4444', 1);
-    drawLine3D(baseVerts[1], baseVerts[2], '#ff4444', 1);
-    drawLine3D(baseVerts[2], baseVerts[0], '#ff4444', 1);
-  }
+function drawMainCamera(worldTo2D, eye, center, up) {
+  const cameraPos = worldTo2D(eye);
+  const targetPos = worldTo2D(center);
   
-  const lookDirection = Vec.normalize(Vec.sub(center, eye));
-  drawCameraCone(eye, lookDirection);
+  // Dibujar posición de la cámara
+  worldCtx.fillStyle = '#ff4444';
+  worldCtx.beginPath();
+  worldCtx.arc(cameraPos[0], cameraPos[1], 4, 0, Math.PI * 2);
+  worldCtx.fill();
   
-
-  let frustumCorners;
+  // Dibujar línea hacia el target
+  worldCtx.strokeStyle = '#ff4444';
+  worldCtx.lineWidth = 2;
+  worldCtx.setLineDash([5, 3]);
+  worldCtx.beginPath();
+  worldCtx.moveTo(cameraPos[0], cameraPos[1]);
+  worldCtx.lineTo(targetPos[0], targetPos[1]);
+  worldCtx.stroke();
+  worldCtx.setLineDash([]);
   
-  if (projectionType === 'perspective') {
-    frustumCorners = getFrustumCorners(eye, center, up, fov, aspect, near, far);
-  } else {
-    const orthoLeft = document.getElementById('orthoLeft') ? +document.getElementById('orthoLeft').value : 2.0;
-    const orthoBottom = document.getElementById('orthoBottom') ? +document.getElementById('orthoBottom').value : 2.0;
-    frustumCorners = getOrthographicFrustumCorners(eye, center, up, orthoLeft, orthoBottom, aspect, near, far);
-  }
-  
-  // Simplified approach: determine visibility from world camera position
-  function shouldBeDashed(p1, p2) {
-    const midX = (p1[0] + p2[0]) / 2;
-    return midX < 1.0; // Edges closer to origin are behind from world view
-  }
-  
-  const frustumEdges = [
-    [0,1],[1,2],[2,3],[3,0], // Near plane
-    [4,5],[5,6],[6,7],[7,4], // Far plane
-    [0,4],[1,5],[2,6],[3,7]  // Connecting edges
-  ];
-  
-  frustumEdges.forEach(([i, j]) => {
-    const p1 = frustumCorners[i];
-    const p2 = frustumCorners[j];
-    const isDashed = shouldBeDashed(p1, p2);
-    
-    drawLine3D(p1, p2, '#0066ff', 1, isDashed);
-  });
-  
-  
+  // Etiqueta de la cámara
   worldCtx.fillStyle = '#333';
   worldCtx.font = '12px monospace';
-  worldCtx.fillText('3D World View', 5, 15);
-  worldCtx.fillText(`Projection: ${projectionType}`, 5, 30);
+  worldCtx.fillText('CAM', cameraPos[0] + 6, cameraPos[1] - 6);
+}
+
+function drawViewingFrustum(worldTo2D, eye, center, up, fov, aspect, zn, zf, projectionType) {
+  worldCtx.strokeStyle = '#4488ff';
+  worldCtx.lineWidth = 1.5;
+  
+  // Calcular dirección de vista
+  const viewDir = Vec.normalize(Vec.sub(center, eye));
+  const rightDir = Vec.normalize(Vec.cross(viewDir, up));
+  const upDir = Vec.cross(rightDir, viewDir);
+  
+  if (projectionType === 'perspective') {
+    // Frustum perspectivo
+    const tanHalfFov = Math.tan((fov * Math.PI / 180) / 2);
+    const nearHeight = Math.abs(zn) * tanHalfFov;
+    const nearWidth = nearHeight * aspect;
+    const farHeight = Math.abs(zf) * tanHalfFov;
+    const farWidth = farHeight * aspect;
+    
+    // Puntos del plano near
+    const nearCenter = Vec.add(eye, Vec.scale(viewDir, Math.abs(zn)));
+    const nearTL = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, nearHeight)), Vec.scale(rightDir, -nearWidth));
+    const nearTR = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, nearHeight)), Vec.scale(rightDir, nearWidth));
+    const nearBL = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, -nearHeight)), Vec.scale(rightDir, -nearWidth));
+    const nearBR = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, -nearHeight)), Vec.scale(rightDir, nearWidth));
+    
+    // Puntos del plano far
+    const farCenter = Vec.add(eye, Vec.scale(viewDir, Math.abs(zf)));
+    const farTL = Vec.add(Vec.add(farCenter, Vec.scale(upDir, farHeight)), Vec.scale(rightDir, -farWidth));
+    const farTR = Vec.add(Vec.add(farCenter, Vec.scale(upDir, farHeight)), Vec.scale(rightDir, farWidth));
+    const farBL = Vec.add(Vec.add(farCenter, Vec.scale(upDir, -farHeight)), Vec.scale(rightDir, -farWidth));
+    const farBR = Vec.add(Vec.add(farCenter, Vec.scale(upDir, -farHeight)), Vec.scale(rightDir, farWidth));
+    
+    const godEyeX = 15; // God's eye X position (camera plane)
+    
+    const allFrustumPoints = [nearTL, nearTR, nearBL, nearBR, farTL, farTR, farBL, farBR];
+    const anyPointBehindCamera = allFrustumPoints.some(point => point[0] >= godEyeX);
+    
+    const maxFrustumSize = 15; 
+    const frustumTooLarge = allFrustumPoints.some(point => 
+      Math.abs(point[0]) > maxFrustumSize || 
+      Math.abs(point[1]) > maxFrustumSize || 
+      Math.abs(point[2]) > maxFrustumSize
+    );
+    
+    if (!anyPointBehindCamera && !frustumTooLarge) {
+      // Transformar a coordenadas de pantalla
+      const screenNear = [nearTL, nearTR, nearBR, nearBL].map(worldTo2D);
+      const screenFar = [farTL, farTR, farBR, farBL].map(worldTo2D);
+      
+      // Dibujar plano near
+      worldCtx.beginPath();
+      worldCtx.moveTo(screenNear[0][0], screenNear[0][1]);
+      for (let i = 1; i < 4; i++) {
+        worldCtx.lineTo(screenNear[i][0], screenNear[i][1]);
+      }
+      worldCtx.closePath();
+      worldCtx.stroke();
+      
+      // Dibujar plano far
+      worldCtx.beginPath();
+      worldCtx.moveTo(screenFar[0][0], screenFar[0][1]);
+      for (let i = 1; i < 4; i++) {
+        worldCtx.lineTo(screenFar[i][0], screenFar[i][1]);
+      }
+      worldCtx.closePath();
+      worldCtx.stroke();
+      
+      // Conectar near y far
+      for (let i = 0; i < 4; i++) {
+        worldCtx.beginPath();
+        worldCtx.moveTo(screenNear[i][0], screenNear[i][1]);
+        worldCtx.lineTo(screenFar[i][0], screenFar[i][1]);
+        worldCtx.stroke();
+      }
+    }
+  } else {
+    // Frustum ortográfico (prisma rectangular)
+    const ui = readUI();
+    const aspectRatio = aspect;
+    const right = ui.orthoLeft * aspectRatio;
+    const top = ui.orthoBottom;
+    
+    // Puntos del plano near
+    const nearCenter = Vec.add(eye, Vec.scale(viewDir, Math.abs(zn)));
+    const nearTL = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, top)), Vec.scale(rightDir, -right));
+    const nearTR = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, top)), Vec.scale(rightDir, right));
+    const nearBL = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, -top)), Vec.scale(rightDir, -right));
+    const nearBR = Vec.add(Vec.add(nearCenter, Vec.scale(upDir, -top)), Vec.scale(rightDir, right));
+    
+    // Puntos del plano far
+    const farCenter = Vec.add(eye, Vec.scale(viewDir, Math.abs(zf)));
+    const farTL = Vec.add(Vec.add(farCenter, Vec.scale(upDir, top)), Vec.scale(rightDir, -right));
+    const farTR = Vec.add(Vec.add(farCenter, Vec.scale(upDir, top)), Vec.scale(rightDir, right));
+    const farBL = Vec.add(Vec.add(farCenter, Vec.scale(upDir, -top)), Vec.scale(rightDir, -right));
+    const farBR = Vec.add(Vec.add(farCenter, Vec.scale(upDir, -top)), Vec.scale(rightDir, right));
+    
+    const godEyeX = 15; // God's eye X position (camera plane)
+    
+    const allFrustumPoints = [nearTL, nearTR, nearBL, nearBR, farTL, farTR, farBL, farBR];
+    const anyPointBehindCamera = allFrustumPoints.some(point => point[0] >= godEyeX);
+    
+    const maxFrustumSize = 15;
+    const frustumTooLarge = allFrustumPoints.some(point => 
+      Math.abs(point[0]) > maxFrustumSize || 
+      Math.abs(point[1]) > maxFrustumSize || 
+      Math.abs(point[2]) > maxFrustumSize
+    );
+
+    if (!anyPointBehindCamera && !frustumTooLarge) {
+      // Transformar a coordenadas de pantalla
+      const screenNear = [nearTL, nearTR, nearBR, nearBL].map(worldTo2D);
+      const screenFar = [farTL, farTR, farBR, farBL].map(worldTo2D);
+      
+      // Dibujar plano near
+      worldCtx.beginPath();
+      worldCtx.moveTo(screenNear[0][0], screenNear[0][1]);
+      for (let i = 1; i < 4; i++) {
+        worldCtx.lineTo(screenNear[i][0], screenNear[i][1]);
+      }
+      worldCtx.closePath();
+      worldCtx.stroke();
+      
+      // Dibujar plano far
+      worldCtx.beginPath();
+      worldCtx.moveTo(screenFar[0][0], screenFar[0][1]);
+      for (let i = 1; i < 4; i++) {
+        worldCtx.lineTo(screenFar[i][0], screenFar[i][1]);
+      }
+      worldCtx.closePath();
+      worldCtx.stroke();
+      
+      // Conectar near y far
+      for (let i = 0; i < 4; i++) {
+        worldCtx.beginPath();
+        worldCtx.moveTo(screenNear[i][0], screenNear[i][1]);
+        worldCtx.lineTo(screenFar[i][0], screenFar[i][1]);
+        worldCtx.stroke();
+      }
+    }
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(initWorldView, 100); 
+  setTimeout(initWorldView, 100);
 });
