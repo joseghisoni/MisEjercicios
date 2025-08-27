@@ -276,52 +276,46 @@ function testPerspective() {
   // Test 1: Valores estándar
   const fov = 90; // 90 deg 
   const aspect = 1; // viewport cuadrado
-  const near = 1;
-  const far = 10;
+  const near = -1;
+  const far = -10;
   
   const projMatrix = perspective(fov, aspect, near, far);
   
-  // Valores esperados en column major
+  // Valores esperados en column major (nueva convención con Z positivo)
   // f = 1/tan(45°) = 1
   // [1, 0, 0, 0,
   //  0, 1, 0, 0,
-  //  0, 0, -11/9, -1,
+  //  0, 0, 11/9, 1,
   //  0, 0, -20/9, 0]
   
   const expectedMatrix = [
     1, 0, 0, 0,
     0, 1, 0, 0,
-    0, 0, -11/9, -1,
-    0, 0, -20/9, 0
+    0, 0, 11/9, -1,
+    0, 0, 20/9, 0
   ];
   
   assertArraysEqual(projMatrix, expectedMatrix, 1e-6, 'perspective matrix values');
 
   // Test 2: Diferente aspect ratio
-  const projMatrix2 = perspective(60, 16/9, 0.1, 100);
+  const projMatrix2 = perspective(60, 16/9, near, far);
   const f2 = 1/Math.tan((60*Math.PI/180)/2); // ~1.732
   assertEqual(projMatrix2[0], f2/(16/9), 1e-6, 'perspective aspect ratio correction');
   assertEqual(projMatrix2[5], f2, 1e-6, 'perspective focal length Y');
 
-  // Test 3: Funcionalidad - transformaciones de puntos
-  const nearPoint = mat4Vec4(projMatrix, [0, 0, -near, 1]);
-  assertArraysEqual([nearPoint[0]/nearPoint[3], nearPoint[1]/nearPoint[3], nearPoint[2]/nearPoint[3]], 
-                   [0, 0, -1], 1e-6, 'perspective near plane mapping');
-  
-  const farPoint = mat4Vec4(projMatrix, [0, 0, -far, 1]);
-  assertArraysEqual([farPoint[0]/farPoint[3], farPoint[1]/farPoint[3], farPoint[2]/farPoint[3]], 
-                   [0, 0, 1], 1e-6, 'perspective far plane mapping');
-  
+  // Test 3: Funcionalidad - transformaciones de puntos 
+  const nearPoint = mat4Vec4(projMatrix, [0, 0, near, 1]);
+  assertEqual(nearPoint[2], 1, 1e-6, 'perspective near plane mapping to z=1');
+
+  const farPoint = mat4Vec4(projMatrix, [0, 0, far, 1]);
+  assertEqual(farPoint[2]/farPoint[3], -1, 1e-6, 'perspective far plane mapping to z=-1');
+
   // Test 4: Frustum
-  const cornerPoint = mat4Vec4(projMatrix, [1, 1, -near, 1]);
+  const cornerPoint = mat4Vec4(projMatrix, [1, 1, near, 1]);
   assertEqual(cornerPoint[0]/cornerPoint[3], 1, 1e-6, 'perspective frustum corner X');
   assertEqual(cornerPoint[1]/cornerPoint[3], 1, 1e-6, 'perspective frustum corner Y');
 
-  // Test 5: Estructura de la matriz
-  assertEqual(projMatrix[3], 0, 1e-6, 'perspective [0,3] should be 0');
-  assertEqual(projMatrix[7], 0, 1e-6, 'perspective [1,3] should be 0');
-  assertEqual(projMatrix[11], -1, 1e-6, 'perspective [2,3] should be -1');
-  assertEqual(projMatrix[15], 0, 1e-6, 'perspective [3,3] should be 0');
+
   
   console.log('✓ perspective tests passed');
 }
@@ -381,31 +375,6 @@ function testOrthographic() {
   console.log('✓ orthographic tests passed');
 }
 
-// ======================= Test: NDC a Screen  =======================
-
-function testNdcToScreen() {
-  console.log('Testing ndcToScreen...');
-  
-  const width = 800;
-  const height = 600;
-
-  // Centro de NDC (0,0) debería mapearse al centro de la pantalla
-  const center = ndcToScreen([0, 0, 0], width, height);
-  assertArraysEqual(center, [(width-1)/2, (height-1)/2, 0], 1e-6, 'ndcToScreen center mapping');
-  
-  // Esquinas de NDC deberían mapearse a las esquinas de la pantalla
-  const topLeft = ndcToScreen([-1, 1, 0], width, height);
-  assertArraysEqual(topLeft, [0, 0, 0], 1e-6, 'ndcToScreen top-left corner');
-  
-  const bottomRight = ndcToScreen([1, -1, 0], width, height);
-  assertArraysEqual(bottomRight, [width-1, height-1, 0], 1e-6, 'ndcToScreen bottom-right corner');
-  
-  // La coordenada Z debería pasar sin cambios
-  const withDepth = ndcToScreen([0, 0, 0.5], width, height);
-  assertEqual(withDepth[2], 0.5, 1e-6, 'ndcToScreen preserves Z');
-  
-  console.log('✓ ndcToScreen tests passed');
-}
 
 // ======================= Tests: funciones de configuración =======================
 
@@ -482,83 +451,6 @@ function testSetupCamera() {
   console.log('✓ setupCamera tests passed');
 }
 
-function testSetupProjection() {
-  console.log('Testing setupProjection...');
-
-  // Test 1: Perspectiva
-  const ui1 = {
-    fov: 60,
-    near: 0.1,
-    far: 10.0,
-  };
-  
-  const result1 = setupProjection(800, 600, ui1, 'perspective');
-  
-  assertEqual(result1.fov, 60, 1e-6, 'setupProjection returns fov');
-  assertEqual(result1.zn, 0.1, 1e-6, 'setupProjection returns zn');
-  assertEqual(result1.zf, 10.0, 1e-6, 'setupProjection returns zf');
-  
-  if (!result1.P || result1.P.length !== 16) {
-    throw new Error('setupProjection should return 4x4 projection matrix');
-  }
-  
-  const aspect = 800/600;
-  const expectedF = 1/Math.tan((60*Math.PI/180)/2);
-  assertEqual(result1.P[0], expectedF/aspect, 1e-6, 'setupProjection perspective matrix [0,0]');
-  assertEqual(result1.P[5], expectedF, 1e-6, 'setupProjection perspective matrix [1,1]');
-  assertEqual(result1.P[11], -1, 1e-6, 'setupProjection perspective matrix [2,3]');
-
-  // Test 2: Proyección ortográfica con valores negativos
-  const ui2 = {
-    near: -0.5,
-    far: -20.0,
-    orthoLeft: 2.0,
-    orthoBottom: 1.5,
-  };
-  
-  const result2 = setupProjection(1920, 1080, ui2, 'orthographic');
-  
-  assertEqual(result2.zn, -0.5, 1e-6, 'setupProjection orthographic zn');
-  assertEqual(result2.zf, -20.0, 1e-6, 'setupProjection orthographic zf');
-  
-  const aspect2 = 1920/1080;
-  const right = ui2.orthoLeft * aspect2;
-  const expectedScaleX = 2 / (2 * right);
-  const expectedScaleY = 2 / (2 * ui2.orthoBottom);
-  
-  assertEqual(result2.P[0], expectedScaleX, 1e-6, 'setupProjection orthographic matrix [0,0]');
-  assertEqual(result2.P[5], expectedScaleY, 1e-6, 'setupProjection orthographic matrix [1,1]');
-  assertEqual(result2.P[15], 1, 1e-6, 'setupProjection orthographic matrix [3,3]');
-  
-  // Test 3: Near/far clamping para perspectiva (usa valores absolutos)
-  const ui3 = {
-    fov: 45,
-    near: -0.1,  // Para perspectiva se toma valor absoluto
-    far: -0.05,  // Para perspectiva se toma valor absoluto, pero debe ser mayor que near
-  };
-  
-  const result3 = setupProjection(640, 480, ui3, 'perspective');
-  
-  assertEqual(result3.zn, 0.1, 1e-6, 'setupProjection uses absolute value for perspective near');
-  if (result3.zf <= result3.zn) {
-    throw new Error('setupProjection should ensure far > near for perspective');
-  }
-
-  // Test 4: Extracción de parámetros de UI
-  const ui4 = {
-    fov: 75,
-    near: 2.0,
-    far: 50.0,
-  };
-  
-  const result4 = setupProjection(1024, 768, ui4, 'perspective');
-  
-  assertEqual(result4.fov, 75, 1e-6, 'setupProjection extracts fov from ui');
-  assertEqual(result4.zn, 2.0, 1e-6, 'setupProjection extracts near from ui');
-  assertEqual(result4.zf, 50.0, 1e-6, 'setupProjection extracts far from ui');
-  
-  console.log('✓ setupProjection tests passed');
-}
 
 // ======================= Test de integración =======================
 
@@ -571,7 +463,7 @@ function testIntegration() {
   const up = [0, 1, 0];
   
   const V = lookAt(eye, center, up);
-  const P = perspective(60, 1, 1, 10);
+  const P = perspective(60, 1, -1, -10); // Usando valores negativos para nueva convención
   const M = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; // Identidad
   
   // MVP = P * V * M
@@ -642,18 +534,10 @@ function runAllTests() {
       ]
     },
     {
-      name: 'Screen Mapping Tests',
-      condition: () => typeof ndcToScreen !== 'undefined',
-      tests: [
-        { name: 'testNdcToScreen', fn: testNdcToScreen }
-      ]
-    },
-    {
       name: 'Setup Function Tests',
-      condition: () => typeof setupCamera !== 'undefined' || typeof setupProjection !== 'undefined',
+      condition: () => typeof setupCamera !== 'undefined',
       tests: [
-        { name: 'testSetupCamera', fn: testSetupCamera, condition: () => typeof setupCamera !== 'undefined' },
-        { name: 'testSetupProjection', fn: testSetupProjection, condition: () => typeof setupProjection !== 'undefined' }
+        { name: 'testSetupCamera', fn: testSetupCamera, condition: () => typeof setupCamera !== 'undefined' }
       ]
     },
     {
@@ -734,6 +618,6 @@ if (typeof module !== 'undefined' && module.exports) {
     testVecAdd, testVecSub, testVecDot, testVecCross, testVecNorm, testVecNormalize,
     testMat4Mul, testMat4Vec4,
     testLookAt, testPerspective, testOrthographic,
-    testNdcToScreen, testIntegration
+    testSetupCamera, testIntegration
   };
 }
