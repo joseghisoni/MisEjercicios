@@ -26,7 +26,15 @@ Tip: Math.hypot(x, y, z) devuelve la magnitud de un vector.
 const Vec = {
   add:(a,b)=>[a[0]+b[0], a[1]+b[1], a[2]+b[2]],
   sub:(a,b)=>[a[0]-b[0], a[1]-b[1], a[2]-b[2]],
-  // Completar 
+  dot:(a,b)=>[a[0]*b[0] + a[1]*b[1] + a[2]*b[2]],
+  cross:(a,b)=>[a[1]* b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  norm:(a)=>[ Math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)],
+  normalize:(a)=>{
+    let norm = Vec.norm(a);
+    if(norm === 0) return [0,0,0]
+    return [a[0]/norm, a[1]/norm, a[2]/norm]
+  },
+  scale:(a, k)=>[a[0]*k, a[1]*k, a[2]*k]
 };
 
 /* TODO: Implementar multiplicación de matrices 4x4 (orden column-major)
@@ -34,6 +42,21 @@ Ayuda: ver tp2.
 Ojo: mat4mul(A, B) implementa la multiplicación de matrices en el siguiente orden: AB
 */
 function mat4Mul(a,b){
+  matriz_resultado = Array(0,0,0,0,0,0,0,0,0,0,0,0)
+
+	for(let i = 0; i < 4; i++){ 
+
+		for(let j = 0; j < 4; j ++){
+
+			valor = 0
+			for(let k = 0; k < 4; k++){
+				valor += a[i + k * 4] * b[j * 4 + k]
+			}
+			matriz_resultado[i + j * 4] = valor
+		}
+	}
+	
+	return matriz_resultado;
   
 }
 
@@ -41,6 +64,20 @@ function mat4Mul(a,b){
 Ayuda: ver tp2.
 */
 function mat4Vec4(m, v){
+
+    vector_resultado = Array(0,0,0,0)
+
+	for(let i = 0; i < 4; i++){ 
+    valor = 0
+		for(let j = 0; j < 4; j ++){
+
+			valor += m[i + j * 4] * v[j]
+
+			vector_resultado[i] = valor
+		}
+	}
+	
+	return vector_resultado;
   
 }
 
@@ -61,6 +98,27 @@ Notar que:
     en el espacio de la cámara (eye en el origen, mirando hacia -Z).
 */
 function lookAt(eye, center, up){
+  let f = Vec.normalize(Vec.sub(center,eye)); //-w 
+  let w =  Vec.scale(f,-1)
+  let s = Vec.normalize(Vec.cross(up, w)); // u 
+  let u = Vec.cross(w, s);
+
+  let matriz_rotacion = Array(
+    s[0],u[0],w[0],0,
+    s[1],u[1],w[1],0,
+    s[2],u[2],w[2],0,
+    0,0,0,1,
+  )
+
+  let matriz_traslacion = Array(
+    1,0,0,0,
+    0,1,0,0,
+    0,0,1,0,
+    -1*eye[0],-1*eye[1],-1 * eye[2],1
+  )
+
+  matriz_resultado = mat4Mul(matriz_rotacion, matriz_traslacion);
+  return matriz_resultado
 
 }
 
@@ -71,6 +129,12 @@ al espacio NDC (Normalized Device Coordinates):
   x_ndc, y_ndc ∈ [-1, 1]   y   z_ndc ∈ [-1, 1]  donde la cámara apunta hacia -Z.
 */
 function orthographic(left, right, bottom, top, znear, zfar){
+  return Array(
+    2/(right-left),0,0,0,
+    0, 2/(top-bottom),0,0,
+    0,0,2/(znear-zfar),0,
+    -1*(right+left)/(right-left), -1*(top+bottom)/(top-bottom), -1*(znear+zfar)/(znear-zfar), 1
+  );
 
 }
 /* TODO: Implementar la matriz de proyección perspectiva,
