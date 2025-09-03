@@ -40,7 +40,7 @@ function readUI() {
     el: +$('elevation').value * Math.PI/180,
     fov: +$('fov').value,
     near: +$('near').value / 100, // divido por 100 porque el slider ahora va de -500 a -1
-    far: +$('far').value / 100,
+    far: +$('far').value /100,
     orthoLeft: +$('orthoLeft')?.value || 2.0,
     orthoBottom: +$('orthoBottom')?.value || 2.0,
   };
@@ -49,26 +49,31 @@ function readUI() {
 // -----------  Render Functions Helpers ------------------------------- //
 
 // 5. Post-processing Module
-function postProcess(imgData, depth) {
+function postProcess(imgData, depth, projectionType) {
   if(mode === 'depth') {
     let zmin = Infinity, zmax = -Infinity;
     for(let i = 0; i < depth.length; i++) {
       const z = depth[i];
-      if(z !== Infinity) {
-        if(z < zmin) zmin = z;
-        if(z > zmax) zmax = z;
-      }
+      if (!Number.isFinite(z)) continue;      
+      if (z < zmin) zmin = z;
+      if (z > zmax) zmax = z;
     }
     const rng = (zmax - zmin) || 1;
     for(let i = 0; i < depth.length; i++) {
       const idx = i * 4;
       const z = depth[i];
-      if(z === Infinity) {
+      if (!Number.isFinite(z)) {               
         imgData.data[idx + 3] = 255;
         continue;
       }
-      const t = (z - zmin) / rng;
-      const g = Math.round(255 * (1 - t));
+      let t;
+      // if (projectionType === 'perspective'){
+      //   t = 1.0 - (z - zmin) / rng; 
+      // } else {
+      //   t = (z - zmin) / rng;
+      // }
+      t = (z - zmin) / rng; 
+      const g = Math.round(255 * t); // 0 lejos, 1 cerca
       imgData.data[idx + 0] = g;
       imgData.data[idx + 1] = g;
       imgData.data[idx + 2] = g;
