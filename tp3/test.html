@@ -57,7 +57,7 @@
     <div class="info">
       <h3>Instrucciones:</h3>
       <p>Este test verifica que todas las funciones core del TP3 estén implementadas correctamente.</p>
-      <p><strong>Funciones testeadas:</strong> Vec, mat4Mul, mat4Vec4, lookAt, perspective, orthographic, ndcToScreen</p>
+      <p><strong>Funciones testeadas:</strong> Vec, mat4Mul, mat4Vec4, lookAt, perspective, orthographic</p>
     </div>
 
     <button onclick="runTests()">Ejecutar Tests</button>
@@ -136,8 +136,7 @@
       console.log('Vector: testVecAdd, testVecSub, testVecDot, testVecCross, testVecNorm, testVecNormalize, testVecScale');
       console.log('Matrix: testMat4Mul, testMat4Vec4');
       console.log('Camera: testLookAt, testPerspective, testOrthographic');
-      console.log('Screen: testNdcToScreen');
-      console.log('Setup: testSetupCamera, testSetupProjection');
+      console.log('Setup: testSetupCamera');
       console.log('Integration: testIntegration');
       console.log('');
       console.log('Ejemplos de uso:');
@@ -163,9 +162,7 @@
       window.testLookAt = testLookAt;
       window.testPerspective = testPerspective;
       window.testOrthographic = testOrthographic;
-      window.testNdcToScreen = testNdcToScreen;
       window.testSetupCamera = testSetupCamera;
-      window.testSetupProjection = testSetupProjection;
       window.testIntegration = testIntegration;
 
       // Exponer algunas matrices de utilidad para pruebas
