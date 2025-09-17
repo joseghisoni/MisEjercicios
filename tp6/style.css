@@ -1,0 +1,170 @@
+html {
+	color: black;
+	background-color: white;
+	font-family: Arial;
+	overflow: hidden;
+}
+body {
+	padding: 0;
+	margin: 0;
+	height: 100%;
+}
+canvas {
+	display: block;
+	position: fixed;
+	top: 50%;
+	left: 0;
+	width: 100%;
+	height: 50%;
+	z-index: 0;
+}
+
+#overlay {
+	display: block;
+	position: fixed;
+	top: 50%;
+	left: 0;
+	width: 100%;
+	height: 50%;
+	z-index: 1;
+}
+
+#divider {
+	position: fixed;
+	top: 50%;
+	left: 0;
+	width: 100%;
+	height: 2px;
+	background: #888;
+	box-shadow: 0 0 4px rgba(0,0,0,0.3);
+	z-index: 2;
+}
+circle {
+	fill: rgb(0, 0, 0);
+	stroke: black;
+	stroke-width: 1px;
+	r: 5px;
+}
+circle:hover {
+	fill: rgb(255, 0, 0);
+	cursor: hand;
+	stroke-width: 4px;
+	stroke: rgb(255, 0, 0);
+}
+line {
+	stroke: transparent;
+	stroke-width: 8px;
+	cursor: pointer;
+	fill: none;
+}
+.visible-line {
+	stroke: black;
+	stroke-width: 2px;
+	stroke-dasharray: 2, 10;
+	pointer-events: none;
+}
+.clickable-line {
+	stroke: transparent;
+	stroke-width: 12px;
+	cursor: pointer;
+}
+path {
+	stroke: rgb(99, 99, 99);
+	stroke-width: 2px;
+	stroke-dasharray: 2, 10;
+	fill: none;
+}
+text {
+	font-family: Arial, sans-serif;
+	font-size: 10px;
+	fill: #666;
+	text-anchor: middle;
+	pointer-events: none;
+}
+#preview-point {
+	fill: white !important;
+	stroke: black !important;
+	stroke-width: 2px !important;
+}
+.grid-line {
+	stroke: #c2c2c2;
+	stroke-width: 1px;
+	stroke-dasharray: 2, 10;
+	pointer-events: none;
+}
+#drawing-mode-selector {
+	position: fixed;
+	bottom: 10px;
+	right: 10px;
+	background: rgba(255, 255, 255, 0.9);
+	padding: 10px;
+	border-radius: 5px;
+	border: 1px solid #ccc;
+	z-index: 10;
+	font-family: Arial, sans-serif;
+	font-size: 12px;
+}
+#drawing-mode-selector label {
+	display: block;
+	margin: 5px 0;
+	cursor: pointer;
+}
+#drawing-mode-selector input[type="radio"] {
+	margin-right: 5px;
+}
+
+#animation-controls {
+	position: fixed;
+	top: 10px;
+	right: 10px;
+	background: rgba(255, 255, 255, 0.9);
+	padding: 15px;
+	border-radius: 5px;
+	border: 1px solid #ccc;
+	z-index: 10;
+	font-family: Arial, sans-serif;
+	font-size: 12px;
+	min-width: 200px;
+}
+
+#animation-controls button {
+	background: #4CAF50;
+	color: white;
+	border: none;
+	padding: 8px 16px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	margin-bottom: 10px;
+	width: 100%;
+}
+
+#animation-controls button:hover {
+	background: #45a049;
+}
+
+.speed-control {
+	margin-bottom: 10px;
+}
+
+.speed-control label {
+	display: block;
+	margin-bottom: 5px;
+	font-weight: bold;
+}
+
+#speed-slider {
+	width: 100%;
+	margin-bottom: 5px;
+}
+
+#speed-value {
+	font-weight: bold;
+	color: #666;
+}
+
+.frame-info {
+	font-size: 11px;
+	color: #666;
+	text-align: center;
+}
