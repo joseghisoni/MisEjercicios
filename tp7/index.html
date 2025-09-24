@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!-- Adaptado de: https://rosettacode.org/wiki/Catmull%E2%80%93Clark_subdivision_surface -->
+<!-- Referencia: https://en.wikipedia.org/wiki/Catmull%E2%80%93Clark_subdivision_surface -->
+<html>
+    <head>
+        <title>CG 2025 - Subdivision Catmull Clark </title>
+        <!-- Estilo -->
+        <link href="style.css" rel="stylesheet">
+
+        <!-- scripts -->
+        <script type="text/javascript" id="includedscript" src="tp7.js"></script>
+        <script type="text/javascript" id="includedscript" src="ejercicio.js"></script>	
+
+    </head>
+    <body>
+        <div class="controls">
+            <button onclick="performSubdivision()">Subdividir</button>
+            <button onclick="resetCube()">Resetear cubo</button>
+            <div class="info">
+                <span id="quadCount">Quads: 6</span>
+            </div>
+        </div>
+        <canvas id="mycanvas"></canvas>
+    </body>
+</html>
