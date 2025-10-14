@@ -17,7 +17,7 @@ class CurveDrawer
 		this.prog.uP3 = gl.getUniformLocation( this.prog, "p3" );
 				
 		// Muestreo del parámetro t
-		this.steps = 100;
+		this.steps = 10000;
 		var tv = [];
 		for ( var i=0; i<this.steps; ++i ) {
 			tv.push( i / (this.steps-1) );
@@ -61,7 +61,7 @@ class CurveDrawer
 		gl.bindBuffer( gl.ARRAY_BUFFER, this.tBuffer );
 		gl.enableVertexAttribArray( this.prog.aT );
 		gl.vertexAttribPointer( this.prog.aT, 1, gl.FLOAT, false, 0, 0 );
-		gl.drawArrays( gl.LINE_STRIP, 0, this.steps );
+		gl.drawArrays( gl.POINTS, 0, this.steps );
 		gl.disableVertexAttribArray( this.prog.aT );
 		// [Completar] No se olviden de hacer el binding del programa y de habilitar los atributos de los vértices
 	}
@@ -74,6 +74,7 @@ class CurveDrawer
 // en punto flotante necesitan ser expresadas como X.Y, incluso si son enteros: ejemplo, para 4 escribimos 4.0
 var curvesVS = `
 	attribute float t;
+	varying float v_t;
 	uniform mat4 mvp;
 	uniform vec2 p0;
 	uniform vec2 p1;
@@ -86,15 +87,25 @@ var curvesVS = `
 		gl_Position.x = u*u*u*p0.x + 3.0*u*u*t*p1.x + 3.0*u*t*t*p2.x + t*t*t*p3.x;
 		gl_Position.y = u*u*u*p0.y + 3.0*u*u*t*p1.y + 3.0*u*t*t*p2.y + t*t*t*p3.y;
 		gl_Position = mvp * gl_Position;
-		gl_PointSize = 5.0;
+		gl_PointSize = 70.0 * t;
+		v_t = t;
 	}
 `;
 
 // Fragment Shader
 var curvesFS = `
 	precision mediump float;
-	void main()
-	{
-		gl_FragColor = vec4(0,0,1,1);
+	varying float v_t;
+
+	vec3 hsv2rgb(vec3 c){
+		vec3 p = abs(fract(c.xxx + vec3(0.0, 2.0/3.0, 1.0/3.0))*6.0 - 3.0);
+		vec3 rgb = c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+		return rgb;
+	}
+
+	void main() {
+	// h rueda 0..1 con v_t, s y v fijos
+	vec3 c = hsv2rgb(vec3(v_t, 0.8, 0.9));
+	gl_FragColor = vec4(c, 1.0);
 	}
 `;
