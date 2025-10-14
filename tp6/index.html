@@ -1,0 +1,39 @@
+<doctype html>
+<html>
+	<head>
+		<title>CG 2025 - TP5</title>
+		<!-- Idea tomada de: https://www.khanacademy.org/computing/pixar/animate -->
+		<!-- estilo-->
+		<link href="style.css" rel="stylesheet">
+
+		<!--js del proyecto -->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+		<script type="text/javascript" id="includedscript" src="lineDrawer.js"></script>
+		<script type="text/javascript" id="includedscript" src="ejercicio.js"></script>
+		<script type="text/javascript" id="includedscript" src="animation.js"></script>
+		<script type="text/javascript" id="includedscript" src="render.js"></script>
+		<script type="text/javascript" id="includedscript" src="overlay.js"></script>
+
+	</head>
+	<body>
+	<canvas id="canvas"></canvas>
+		<div id="divider"></div>
+		<svg id="overlay">
+			<g id="grid-lines"></g>
+			<path id="curve" />
+			<g id="lines"></g>
+			<g id="frame-labels"></g>
+			<circle id="preview-point" r="6" fill="white" stroke="black" stroke-width="2" style="display: none; pointer-events: none;"></circle>
+		</svg>
+		<div id="drawing-mode-selector">
+			<label>
+				<input type="radio" name="drawingMode" value="lines" checked>
+				Lines
+			</label>
+			<label>
+				<input type="radio" name="drawingMode" value="curve">
+				Curve
+			</label>
+		</div>
+	</body>
+</html>
