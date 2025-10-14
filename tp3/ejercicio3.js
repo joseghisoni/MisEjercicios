@@ -26,15 +26,19 @@ Tip: Math.hypot(x, y, z) devuelve la magnitud de un vector.
 const Vec = {
   add:(a,b)=>[a[0]+b[0], a[1]+b[1], a[2]+b[2]],
   sub:(a,b)=>[a[0]-b[0], a[1]-b[1], a[2]-b[2]],
-  dot:(a,b)=>[a[0]*b[0] + a[1]*b[1] + a[2]*b[2]],
-  cross:(a,b)=>[a[1]* b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
-  norm:(a)=>[ Math.sqrt(a[0]**2 + a[1]**2 + a[2]**2)],
+  dot:(a,b)=> (a[0]*b[0] + a[1]*b[1] + a[2]*b[2]),
+  cross:(a,b)=>[
+    a[1]*b[2] - a[2]*b[1],
+    a[2]*b[0] - a[0]*b[2],
+    a[0]*b[1] - a[1]*b[0]
+  ],
+  norm:(a)=> Math.hypot(a[0], a[1], a[2]),
   normalize:(a)=>{
-    let norm = Vec.norm(a);
-    if(norm === 0) return [0,0,0]
-    return [a[0]/norm, a[1]/norm, a[2]/norm]
+    const n = Math.hypot(a[0], a[1], a[2]);
+    if (n === 0) return [0,0,0];
+    return [a[0]/n, a[1]/n, a[2]/n];
   },
-  scale:(a, k)=>[a[0]*k, a[1]*k, a[2]*k]
+  scale:(a, x)=> [a[0]*x, a[1]*x, a[2]*x],
 };
 
 /* TODO: Implementar multiplicación de matrices 4x4 (orden column-major)
@@ -42,43 +46,35 @@ Ayuda: ver tp2.
 Ojo: mat4mul(A, B) implementa la multiplicación de matrices en el siguiente orden: AB
 */
 function mat4Mul(a,b){
-  matriz_resultado = Array(0,0,0,0,0,0,0,0,0,0,0,0)
-
-	for(let i = 0; i < 4; i++){ 
-
-		for(let j = 0; j < 4; j ++){
-
-			valor = 0
-			for(let k = 0; k < 4; k++){
-				valor += a[i + k * 4] * b[j * 4 + k]
-			}
-			matriz_resultado[i + j * 4] = valor
-		}
-	}
-	
-	return matriz_resultado;
-  
+  const out = new Array(16);
+  for ( let i = 0; i < 4; i++){
+    for (let j = 0; j < 4; j++){
+      let suma = 0;
+      for(let k = 0; k < 4; k++){
+        const a_ik = a[k * 4 + i];
+        const b_kj = b[j * 4 + k];
+        suma += a_ik * b_kj;
+      }
+      out[j * 4 + i] = suma;
+    }
+  }
+  return out;
 }
 
 /* TODO: Implementar multiplicación de matrices 4x4 (orden column-major)
 Ayuda: ver tp2.
 */
-function mat4Vec4(m, v){
-
-    vector_resultado = Array(0,0,0,0)
-
-	for(let i = 0; i < 4; i++){ 
-    valor = 0
-		for(let j = 0; j < 4; j ++){
-
-			valor += m[i + j * 4] * v[j]
-
-			vector_resultado[i] = valor
-		}
-	}
-	
-	return vector_resultado;
-  
+function mat4Vec4(a, b){
+  const out = new Array(4);
+  for ( let i = 0; i < 4; i++){
+    let suma = 0;
+    for (let j = 0; j < 4; j++){
+      const a_ij = a[j * 4 + i];
+      suma += a_ij * b[j];
+    }
+    out[i] = suma;
+  }
+  return out;
 }
 
 /* TODO: Implementar la matriz de vista (lookAt).
@@ -98,27 +94,16 @@ Notar que:
     en el espacio de la cámara (eye en el origen, mirando hacia -Z).
 */
 function lookAt(eye, center, up){
-  let f = Vec.normalize(Vec.sub(center,eye)); //-w 
-  let w =  Vec.scale(f,-1)
-  let s = Vec.normalize(Vec.cross(up, w)); // u 
-  let u = Vec.cross(w, s);
+  let f = Vec.normalize(Vec.sub(center, eye))            // -w
+  let w = Vec.scale(f, -1)
+  let s = Vec.normalize(Vec.cross(up, w)) // u
+  let u = Vec.cross(w, s)                                // v
 
-  let matriz_rotacion = Array(
-    s[0],u[0],w[0],0,
-    s[1],u[1],w[1],0,
-    s[2],u[2],w[2],0,
-    0,0,0,1,
-  )
+  let matriz_rotacion = [s[0], u[0], w[0], 0, s[1], u[1], w[1], 0, s[2], u[2], w[2], 0, 0, 0, 0, 1]
 
-  let matriz_traslacion = Array(
-    1,0,0,0,
-    0,1,0,0,
-    0,0,1,0,
-    -1*eye[0],-1*eye[1],-1 * eye[2],1
-  )
+  let matriz_traslacion = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, eye[0] * -1, eye[1] * -1, eye[2] * -1, 1]
 
-  matriz_resultado = mat4Mul(matriz_rotacion, matriz_traslacion);
-  return matriz_resultado
+  return mat4Mul(matriz_rotacion, matriz_traslacion)
 
 }
 
@@ -129,26 +114,21 @@ al espacio NDC (Normalized Device Coordinates):
   x_ndc, y_ndc ∈ [-1, 1]   y   z_ndc ∈ [-1, 1]  donde la cámara apunta hacia -Z.
 */
 function orthographic(left, right, bottom, top, znear, zfar){
-  return Array(
-    2/(right-left),0,0,0,
-    0, 2/(top-bottom),0,0,
-    0,0,2/(znear-zfar),0,
-    -1*(right+left)/(right-left), -1*(top+bottom)/(top-bottom), -1*(znear+zfar)/(znear-zfar), 1
-  );
+  let matriz = [ 2 / (right - left), 0, 0, 0, 0, 2 / (top - bottom), 0, 0, 0, 0, 2/(znear - zfar), 0, -1 * (right + left) / (right - left), -1 * (top + bottom) / (top - bottom), -1 * (znear + zfar) / (znear - zfar), 1 ]
+  return matriz
 
 }
-/* TODO: Implementar la matriz de proyección perspectiva,
-La transformación proyectiva que lleva del view frustrum a espacio CLIP. Ejemplo,
-(x_clip, y_clip, z_clip, w_clip).T = P * (x, y, z, 1).T
-Para obtener las coordenadas en NDC, basta dividir (x,y,z) por w_clip.
-Los parámetros son: 
-- fovYdeg: field of view en grados (vertical)
-- aspect: ratio (r) de width/height
-- znear, zfar: planos de near y far
-Ayuda: ver apunte del campus.
-*/
 function perspective(fovYdeg, aspect, znear, zfar){
-
+  const halfRad = (fovYdeg * Math.PI / 180) * 0.5;
+  const f = 1 / Math.tan(halfRad); // cot(fovY/2)
+  // Column-major 4x4 perspective matrix (OpenGL-style)
+  // Maps view frustum to clip space; z in [-1,1] after divide by w
+  return [
+    f / aspect, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, - (zfar + znear) / (znear - zfar), -1,
+    0, 0, (2 * zfar * znear) / (znear - zfar), 0
+  ];
 }
 
 
@@ -158,8 +138,8 @@ pantalla [0,width-1] x [0,height-1] (en coordenadas homogeneas)
 Ejemplo: ndcToScreen([-1,1,0], 800, 600) => [0, 0, 0] 
 */
 function ndcToScreen(ndc, width, height){
-  const x = (ndc[0]*0.5*(width)+0.5*(width-1));
-  const y = ((-ndc[1]*0.5*(height)+0.5*(height-1)));
+  const x = (ndc[0] * 0.5 + 0.5) * (width - 1);
+  const y = ((-ndc[1]) * 0.5 + 0.5) * (height - 1);
   return [x,y,ndc[2]]; // coord z lo mantengo
 }
 
@@ -196,14 +176,14 @@ function setupCamera(ui) {
 
 /* Esta función construye la matriz de proyección P según el tipo elegido.
 Notas:
-- NDC: x,y,z ∈ [-1, 1], cámara mirando hacia -Z.
-- En perspectiva: usar `perspective(fov, aspect, zn, zf)` donde
+•⁠  ⁠NDC: x,y,z ∈ [-1, 1], cámara mirando hacia -Z.
+•⁠  ⁠En perspectiva: usar ⁠ perspective(fov, aspect, zn, zf) ⁠ donde
     fov = ui.fov (grados), aspect = width/height.
-- En ortográfica: asumimos prisma simétrico en X/Y. Se calcula
+•⁠  ⁠En ortográfica: asumimos prisma simétrico en X/Y. Se calcula
     aspect = width/height,
     right = ui.orthoLeft * aspect,   // medio-ancho en mundo
     top   = ui.orthoBottom,          // medio-alto en mundo
-  y luego `orthographic(-right, right, -top, top, zn, zf)`.
+  y luego ⁠ orthographic(-right, right, -top, top, zn, zf) ⁠.
 */
 function setupProjection(width, height, ui, projectionType) {
   const fov = ui.fov;
@@ -257,10 +237,9 @@ function homogeneousToNDC(coords) {
 }
 // -------------------- II. II. Rasterization de triángulos ---------------------- // 
 
-/* TODO: Implementar la función area(p0, p1, p2).
-*/
-function area(p0,p1,p2){ 
-
+function area(p0, p1, p2) {
+  const x0 = p0[0], y0 = p0[1];
+  return (p1[0] - x0) * (p2[1] - y0) - (p1[1] - y0) * (p2[0] - x0);
 }
 
 /*Implementa la función triOutsideZ(c0, c1, c2).
@@ -296,12 +275,33 @@ function drawTriangle(img, depth, v0, v1, v2, rgb){
   // Busco bounding box
   let minX=Math.max(0, Math.floor(Math.min(...xs))), maxX=Math.min(w-1, Math.ceil(Math.max(...xs)));
   let minY=Math.max(0, Math.floor(Math.min(...ys))), maxY=Math.min(h-1, Math.ceil(Math.max(...ys)));
+  const A = area(v0, v1, v2);
+  if (A === 0) return;
   
 
   for(let y=minY;y<=maxY;y++){
     for(let x=minX;x<=maxX;x++){
       const p=[x+0.5,y+0.5]; // Píxel en coordenadas de pantalla
-      // dibujo pixel
+      // Barycentric test
+      const w0 = area(p, v1, v2);
+      const w1 = area(v0, p, v2);
+      const w2 = area(v0, v1, p);
+      // Accept if same sign as triangle area
+      if (A < 0) {
+        if (w0 > 0 || w1 > 0 || w2 > 0) continue;
+      } else {
+        if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+      }
+      const b0 = w0 / A, b1 = w1 / A, b2 = w2 / A;
+      const z = b0*v0[2] + b1*v1[2] + b2*v2[2];
+      const idx = (y*w + x);
+      if (z >= depth[idx]) continue; // keep nearest with smaller z (NDC: near ~ -1)
+      depth[idx] = z;
+      const base = idx*4;
+      img.data[base+0] = rgb[0];
+      img.data[base+1] = rgb[1];
+      img.data[base+2] = rgb[2];
+      img.data[base+3] = 255;
     }
   }
 }
@@ -310,7 +310,7 @@ function drawTriangle(img, depth, v0, v1, v2, rgb){
 function renderTriangles(width, height, clip) {
   const imgData = ctx.createImageData(width, height);
   const depth   = new Float32Array(width * height);
-  depth.fill(Number.NEGATIVE_INFINITY);
+  depth.fill(Number.POSITIVE_INFINITY);
   const img = {data: imgData.data, w: width, h: height};
   
   for(let i = 0; i < CUBE_FACES.length; i++) {
@@ -327,14 +327,16 @@ function renderTriangles(width, height, clip) {
     const v2 = ndcToScreen(homogeneousToNDC(c2), width, height);
 
     // Backface culling
-    const area = edge(v0, v1, v2);
-    if (area > 0) continue; // ndc flip this
+    const A = area(v0, v1, v2);
+    if (A < 0) continue; // cull clockwise; keep CCW in screen space
 
     if (mode === 'fill') {
       drawTriangle(img, depth, v0, v1, v2, FACE_COLORS[i]);
     } else if (mode === 'depth') {
       drawTriangle(img, depth, v0, v1, v2, [0, 0, 0]);
     }
+  }
+  return { imgData, depth };
 }
 
 // TODO: Completar la función de renderizado principal
@@ -343,14 +345,16 @@ function render() {
   
   // 1. Setear cámara y construir la matriz de Vista
   const ui = readUI();
-  // a completar
+  const { eye, center, up } = setupCamera(ui);
+  const V = lookAt(eye, center, up);
 
   // 2. Configurar proyección
   const { P, fov, zn, zf } = setupProjection(W, H, ui, projectionType);
 
   // 3. Crear matriz de modelo-vista-proyección
   const M = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]; // Identidad - objeto fijo en el espacio mundo
-  //  a completar
+  const VP = mat4Mul(P, V);
+  const MVP = mat4Mul(VP, M);
 
   // 4. Convierto a coordenadas homogeneas
   const { clip } = processGeometry(MVP);
@@ -359,7 +363,7 @@ function render() {
   const { imgData, depth } = renderTriangles(W, H, clip);
   
   // 6. Post-procesar (visualización de profundidad)
-  postProcess(imgData, depth);
+  postProcess(imgData, depth, projectionType);
 
   // 7. Muestro la imagen en el canvas
   ctx.putImageData(imgData, 0, 0);
