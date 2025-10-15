@@ -642,7 +642,7 @@ function updateFaceLabels() {
 
 function handleValidate() {
     if (!state.halfEdgeMesh) {
-        alert('No mesh loaded. Please load an OBJ file first.');
+        alert('Debe cargar una malla primero.');
         return;
     }
 
@@ -650,12 +650,12 @@ function handleValidate() {
 
     if (!result.valid) {
         console.error('Validation errors:', result.errors);
-        alert(`❌ Validation FAILED with ${result.errors.length} errors.\nCheck console for details.`);
+        alert(`❌ Error de validación.`);
     } else if (result.warnings.length > 0) {
         console.warn('Validation warnings:', result.warnings);
-        alert(`✓ Validation PASSED with ${result.warnings.length} warnings (boundary edges).\nCheck console for details.`);
+        alert(`✓ Validación Passed con ${result.warnings.length} advertencias (hay edges de borde).`);
     } else {
-        alert('✓ Validation PASSED! Half-edge structure is valid.');
+        alert('✓ Validación Passed! La estructura half-edge es válida.');
     }
 }
 
