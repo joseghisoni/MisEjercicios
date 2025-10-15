@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CG 2025 - TP 8</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Estructura de datos Half-Edges</h1>
+        </header>
+
+        <div id="canvas-container">
+            <div class="info-overlay">
+                <div class="info-item">
+                    <span class="info-label">Vertices:</span>
+                    <span class="info-value" id="vertexCount">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Edges:</span>
+                    <span class="info-value" id="edgeCount">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Faces:</span>
+                    <span class="info-value" id="faceCount">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Half-Edges:</span>
+                    <span class="info-value" id="halfEdgeCount">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- dat.GUI -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+
+    <!-- Project files -->
+    <script src="halfedge.js"></script>
+    <script src="halfedge-advanced.js"></script>
+    <script src="tp8.js"></script>
+    <script src="test.js"></script>
+</body>
+</html>
