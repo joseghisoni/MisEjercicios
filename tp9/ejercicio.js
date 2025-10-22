@@ -105,7 +105,7 @@ class MeshDrawer
 		this.numTriangles = vertPos.length / 3 / 3;
 		// [COMPLETAR] Actualizar el contenido del buffer de vértices
 
-		// 1. Binding y seteo del buffer de vértices
+		// 1. Binding y seteo del buffer de vértices de posiciones
 
 		// 2. Binding y seteo del buffer de coordenadas de textura
 
